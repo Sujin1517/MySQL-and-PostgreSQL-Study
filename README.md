@@ -2,7 +2,7 @@
 
 지난강의에서 MySQL을 통해 RDB를 간단하게 알아보고 사용하는것을 해 보았습니다.
 
-기초적인 내용만 배웠지만 PostgreSQL과 비교하면서 서로 어떤 특징을 가지고 있고,
+기초적인 내용만 배웠지만 PostgreSQL과 비교하면서 어떤 특징을 가지고 있고,
 
 어떤 장단점을 가지고 있는지 알아봅시다.
 
@@ -27,6 +27,8 @@ PostgresSQL은 서버와 작업도구가 함께 설치가 됩니다.
 위 파일을 실행하면 됩니다.
 
 <br>
+
+
 
 ## Database, Schema, Table
 
@@ -204,7 +206,7 @@ xmin, xmax라는 metadata field에 함께 저장합니다.
 
 
 
-### Vacuum
+## Vacuum
 
 Vacuum이란 PostgreSQL에서 MVCC를 구현하면서 나오게 된 PostgreSQL만의 동작입니다.
 
@@ -212,8 +214,9 @@ Vacuum이 하는 역할은 여러가지지만 크게 2가지의 역할이 있습
 
 첫번째는 Dead tupel 정리, 두번째는 Transaction ID Wraparound 방지입니다.
 
+<br>
 
-#### Dead Tuple 정리
+### Dead Tuple 정리
 
 Transaction이 Commit되거나 Rollback되면
 
@@ -237,23 +240,50 @@ Transaction이 Commit되거나 Rollback되면
 
 모든 작업에 Lock이 걸리기 때문에 `select` 작업도 중지하게 됩니다.
 
+vacuum은 내부 알고리즘에 따라 주기적으로 실시되며,
 
-#### Transaction ID Wraparound 방지
+이것을 Auto Vacuum이라고 부릅니다.
 
-PostgreSQL은 시점을 Tuple에 xmin, xmax라는 Transaction ID로 저장하고
+<br>
+
+### Transaction ID Wraparound 방지
+
+PostgreSQL은 시점을 Tuple에 xmin, xmax라는 Transaction ID(XID)로 저장하고
 
 이 값을 비교하여 MVCC를 구현합니다.
 
 이때 사용되는 xmin, xmax은 4byte 값입니다.
 
-4byte는 약 40억(2<sup>32</sup>)개의 Transaction을 표현 할 수 있으며
+4byte는 약 43억(2<sup>32</sup>)개의 Transaction을 표현 할 수 있으며
 
-반은 과거, 반은 미래를 표현하는 값으로 사용되게 됩니다.
+현재 XID 수치의 반은 과거, 반은 미래를 표현하는 값으로 사용되게 됩니다.
+
+<br>
 
 중요한것은 이 Trasaction ID는 <b>무한하지 않다</b> 라는 것인데요.
 
-만약 최대치를 넘어가게 되면 오버플로우,
+만약 XID가 2<sup>32</sup>을 넘어가게 되면,
 
-즉 Transaction ID Wraparound 현상이 발생하게 됩니다.
+Transaction ID Wraparound라는 현상이 발생하게 됩니다.
 
-이러한 현상이 발생하면 데이터가 뒤섞이는 심각한 문제가 생기기 때문에
+이 현상은 미래와 과거의 데이터가 뒤섞이는 심각한 문제이기 때문에
+
+Current XID - 생성시점 XID가 약 21억을 초과하기 전에
+
+XID를 Frozen XID 이라고 부르는 값인 2로 변경해줍니다.
+
+동작을 Freeze 또는 Anti Wraparound Vacuum이라고 부릅니다.
+
+<br>
+
+이러한 Freeze 대상을 선정하기 위해 Age라는 개념이 도입되었습니다.
+
+Age는 Tuple이 insert 되었을때 1부터 시작하며,
+
+DB에서 트랜잭션이 발생할 때 마다 1씩 증가합니다.
+
+즉 Age는 생성시점 XID와 Current XID의 차이를 의미합니다.
+
+Age가 AUTOVACUUM_FREEZE_MAX_AGE에 도달하면 Freeze를 자동으로 실행되게 되고,
+
+수동적으로는 `vacuum freeze`를 사용하게 되면 모든 튜플의 XID를 2로 변경합니다.
