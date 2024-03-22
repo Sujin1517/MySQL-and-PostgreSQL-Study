@@ -20,7 +20,7 @@ MySQL은 서버와 워크벤치가 나뉘어져 따로 설치가 가능하지만
 
 PostgresSQL은 서버와 작업도구가 함께 설치가 됩니다.
 
-설치가 무난히 끝나고 나서 보면, 시작메뉴에 관련 프로그램들이 보이지 않는데
+설치를 문제없이 끝나고 나서 보면, 시작메뉴에 관련 프로그램들이 보이지 않는데
 
 > C:\Program Files\PostgreSQL\16\pgAdmin 4\runtime\pgAdmin4.exe
 
@@ -34,7 +34,7 @@ PostgresSQL은 서버와 작업도구가 함께 설치가 됩니다.
 
 MySQL처럼 PostgreSQL도 GUI를 통해 Database를 생성 할 수 있습니다.
 
-그런데 Table을 생성하려고 보면 해당 탭이 보이지 않습니다.
+그런데 Table을 생성하려고 보면 해당 탭이 바로 보이지는 않습니다.
 
 <br>
 
@@ -56,16 +56,30 @@ Schema를 열고 기본으로 설정된 Public Schema를 보면 Table 탭이 있
 
 <sup>"실제로 MySQL의 GUI를 보면 Schema라고 되어있다."</sup>
 
-<br>-
+<br>
 
-<br>-
+Schema는 간단히 말하면 DB를 논리적으로 나눠놓은 공간입니다.
 
-<br>-
+Database는 DB들을 물리적으로 나눠놓은 공간이고,
+
+Table은 데이터가 저장되는 DB입니다.
+
+그리고 이 가운데에 있는것이 데이터들을 논리적으로 나누어 관리하는 Schema 입니다.
+
+<br>
+
+Database들은 물리적으로 나뉘어져 있기에 서로 참조할수 없습니다.
+
+하지만 Schema들은 논리적으로 나뉘어져 있을 뿐,
+
+같은 공간 내에 있기 때문에 다른 Schema의 Table을 참조해 사용 할 수 있습니다.
 
 <br> 
 
 앞서 말했듯이 MySQL의 Database는 Schema라고 했었습니다.
+
 Database는 물리적으로 나뉘어진 구조기 때문에 참조를 못한다고 했었는데,
+
 MySQL에서는 어떨지 보면
 
 ![](https://velog.velcdn.com/images/11tnwls12/post/2e1453e1-efca-4912-bb93-56279367bcaa/image.png)
@@ -222,11 +236,15 @@ Transaction이 Commit되거나 Rollback되면
 
 더이상 사용되지 않는 Dead tuple이 생기게 됩니다.
 
+<br>
+
 이 Dead tuple은 용량과 자리는 그대로 차지하기 때문에
 
 현재 사용하는 Live tuple을 읽을때 더 많은 자원을 소모하게 합니다.
 
 이때 `vacuum`을 수행하면 Dead tuple을 정리하고 처리속도를 최적화 할 수 있습니다.
+
+<br>
 
 이 Vacuum에도 2가지 종류가 있습니다.
 
@@ -234,11 +252,15 @@ Transaction이 Commit되거나 Rollback되면
 
 공간까지 최적화 하지는 못해서, 테이블의 사이즈는 그대로 유지되게 됩니다.
 
+<br>
+
 반면 `vacuum full`을 사용하면 공간까지 최적화 하게 되나,
 
 대상 테이블을 복사하여 처리하기 때문에 디스크 용량 여유가 필요하고,
 
 모든 작업에 Lock이 걸리기 때문에 `select` 작업도 중지하게 됩니다.
+
+<br>
 
 vacuum은 내부 알고리즘에 따라 주기적으로 실시되며,
 
@@ -252,7 +274,9 @@ PostgreSQL은 시점을 Tuple에 xmin, xmax라는 Transaction ID(XID)로 저장�
 
 이 값을 비교하여 MVCC를 구현합니다.
 
-이때 사용되는 xmin, xmax은 4byte 값입니다.
+<br>
+
+이때 사용되는 xmin, xmax은 4byte 값인데,
 
 4byte는 약 43억(2<sup>32</sup>)개의 Transaction을 표현 할 수 있으며
 
@@ -266,13 +290,15 @@ PostgreSQL은 시점을 Tuple에 xmin, xmax라는 Transaction ID(XID)로 저장�
 
 Transaction ID Wraparound라는 현상이 발생하게 됩니다.
 
+<br>
+
 이 현상은 미래와 과거의 데이터가 뒤섞이는 심각한 문제이기 때문에
 
 Current XID - 생성시점 XID가 약 21억을 초과하기 전에
 
 XID를 Frozen XID 이라고 부르는 값인 2로 변경해줍니다.
 
-동작을 Freeze 또는 Anti Wraparound Vacuum이라고 부릅니다.
+이 동작을 Freeze 또는 Anti Wraparound Vacuum이라고 부릅니다.
 
 <br>
 
