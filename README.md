@@ -94,7 +94,9 @@ PostgreSQL에서 Database나 Table 등을 만들때,
 
 이름에 대문자를 넣으면 모두 소문자로 교체되어 생성되게 되는데,
 
-만약 이름에 대문자를 사용하고 싶을 때, 이름을 `"`로 감싸주면 대문자를 사용할 수 있게 됩니다.
+만약 이름에 대문자를 사용하고 싶을 때,
+
+이름을 `"`로 감싸주면 대문자를 사용할 수 있게 됩니다.
 
 <br>
 
@@ -156,9 +158,9 @@ Tablespace 가장 큰 단위이며 데이터를 물리적으로 저장하는 공
 
 ## 다중 버전 동시성 제어 (MVCC)
 
-DB를 여러곳에서 동시에 이용할 경우엔 여러개의 트랜잭션이 실행되게 됩니다.
+DB를 여러곳에서 동시에 이용할 경우엔 여러개의 Transaction이 실행되게 됩니다.
 
-이 트랜잭션들이 쿼리 수행 시점의 데이터를 일관적으로 보장하게 하고,
+이 Transaction들이 쿼리 수행 시점의 데이터를 일관적으로 보장하게 하고,
 
 DB를 읽거나 쓸때 충돌이 일어나지 않게 하는것이 MVCC입니다.
 
@@ -168,23 +170,23 @@ MySQL과 PostgreSQL은 이 MVCC를 구현한 방식이 다릅니다.
 
 먼저 MySQL은 Undo segment(Rollback segment)를 이용합니다.
 
-트랜잭션들은 각자 자기만의 Undo log를 배정받습니다.
+Transaction들은 각자 자기만의 Undo log를 배정받습니다.
 
-트랜잭션에서 변경된 데이터는 모두 이 Undo log에 저장되고,
+Transaction에서 변경된 데이터는 모두 이 Undo log에 저장되고,
 
 그 뒤에 변경된 내용들은 앞의 내용을 포인터로 가리키는 형태입니다.
 
-새 트랜잭션이 생기면 이 포인터로 연결된 리스트를 훑어
+새 Transaction이 생기면 이 포인터로 연결된 리스트를 훑어
 
 자신이 읽을수 있는 시점의 데이터를 가져옵니다.
 
 <br>
 
-Undo log는 트랜잭션이 존재하는동안 계속 유지되고 있으며,
+Undo log는 Transaction이 존재하는동안 계속 유지되고 있으며,
 
 그만큼 데이터에 연결된 리스트가 길어지므로
 
-너무 오래 트랜잭션을 열어두게 되면 Read Latency에 영향이 생기게 됩니다.
+너무 오래 Transaction을 열어두게 되면 Read Latency에 영향이 생기게 됩니다.
 
 <br>
 
@@ -202,7 +204,56 @@ xmin, xmax라는 metadata field에 함께 저장합니다.
 
 
 
-### Vaccum
+### Vacuum
 
-Vaccum이란 PostgreSQL에서 MVCC를 구현하면서 나온 PostgreSQL만의 동작입니다.
+Vacuum이란 PostgreSQL에서 MVCC를 구현하면서 나오게 된 PostgreSQL만의 동작입니다.
 
+Vacuum이 하는 역할은 여러가지지만 크게 2가지의 역할이 있습니다.
+
+첫번째는 Dead tupel 정리, 두번째는 Transaction ID Wraparound 방지입니다.
+
+
+#### Dead Tuple 정리
+
+Transaction이 Commit되거나 Rollback되면
+
+더이상 사용되지 않는 Dead tuple이 생기게 됩니다.
+
+이 Dead tuple은 용량과 자리는 그대로 차지하기 때문에
+
+현재 사용하는 Live tuple을 읽을때 더 많은 자원을 소모하게 합니다.
+
+이때 `vacuum`을 수행하면 Dead tuple을 정리하고 처리속도를 최적화 할 수 있습니다.
+
+이 Vacuum에도 2가지 종류가 있습니다.
+
+일반적인 Vacuum이나 AutoVacuum은 Dead tuple을 지워서 재사용 가능하게 하지만,
+
+공간까지 최적화 하지는 못해서, 테이블의 사이즈는 그대로 유지되게 됩니다.
+
+반면 `vacuum full`을 사용하면 공간까지 최적화 하게 되나,
+
+대상 테이블을 복사하여 처리하기 때문에 디스크 용량 여유가 필요하고,
+
+모든 작업에 Lock이 걸리기 때문에 `select` 작업도 중지하게 됩니다.
+
+
+#### Transaction ID Wraparound 방지
+
+PostgreSQL은 시점을 Tuple에 xmin, xmax라는 Transaction ID로 저장하고
+
+이 값을 비교하여 MVCC를 구현합니다.
+
+이때 사용되는 xmin, xmax은 4byte 값입니다.
+
+4byte는 약 40억(2<sup>32</sup>)개의 Transaction을 표현 할 수 있으며
+
+반은 과거, 반은 미래를 표현하는 값으로 사용되게 됩니다.
+
+중요한것은 이 Trasaction ID는 <b>무한하지 않다</b> 라는 것인데요.
+
+만약 최대치를 넘어가게 되면 오버플로우,
+
+즉 Transaction ID Wraparound 현상이 발생하게 됩니다.
+
+이러한 현상이 발생하면 데이터가 뒤섞이는 심각한 문제가 생기기 때문에
