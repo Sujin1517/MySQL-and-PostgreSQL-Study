@@ -313,3 +313,68 @@ DB에서 트랜잭션이 발생할 때 마다 1씩 증가합니다.
 Age가 AUTOVACUUM_FREEZE_MAX_AGE에 도달하면 Freeze를 자동으로 실행되게 되고,
 
 수동적으로는 `vacuum freeze`를 사용하게 되면 모든 튜플의 XID를 2로 변경합니다.
+
+<br>
+
+## PostgreSQL 사용법
+
+### Node.js
+
+먼저 pg 모듈을 설치해야 합니다.
+
+> npm install pg
+
+정상적으로 `node_modules` 안에 모듈이 설치되더라도
+
+실행시 pg 모듈이 없다고 오류가 뜰 경우엔
+
+간단하게 한번 더 설치하면 해결됩니다.
+
+<br>
+
+설치가 끝난 뒤 사용 방법은
+
+Java에서 MySQL을 사용하던것과 크게 다르지 않습니다.
+
+```
+ const { Client } = require('pg');
+ const client = new Client({
+   user: "<계정>",
+   host  : "<주소>",
+   database: "<데이터베이스>",
+   password: "<암호>",
+   port: 5432(기본포트),
+});
+```
+
+먼저 pg모듈을 불러와 Client를 선언하고,
+
+접속 정보를 넣어줍니다.
+
+그 다음엔 `client.connect();`로 DB서버와 연결하고,
+
+`client.query("<쿼리문>", <처리할 함수>)`를 사용하면 됩니다.
+
+<br>
+
+```
+// 사용 예시
+client.connect();
+client.query("SELECT * FROM now()", (error, response) => {
+  console.log(error);
+  console.log(response);
+  client.end();
+});
+```
+
+`response`는 Select의 결과를 Json으로 반환합니다.
+
+Java에서는 `.next()`를 이용해 한줄 한줄 읽어야 했었지만
+
+JS는 오브젝트가 있기 때문에 Json을 그대로 사용할 수 있습니다.
+
+```
+console.log(respons.rows[0].now);
+//결과
+//2024-03-25T23:51:48.594Z
+```
