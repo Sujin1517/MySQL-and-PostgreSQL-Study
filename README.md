@@ -16,10 +16,6 @@
 
 > https://www.postgresql.org/download/
 
-MySQL은 서버와 워크벤치가 나뉘어져 따로 설치가 가능하지만
-
-PostgresSQL은 서버와 작업도구가 함께 설치가 됩니다.
-
 설치를 문제없이 끝나고 나서 보면, 시작메뉴에 관련 프로그램들이 보이지 않는데
 
 > C:\Program Files\PostgreSQL\16\pgAdmin 4\runtime\pgAdmin4.exe
